@@ -66,7 +66,8 @@ The `REPOSITORY_URL` is available in the stack outputs or can be retrieved using
 
 ```
 ➜  ~ curl --location --request GET '8lndacgq3j.execute-api.us-east-1.amazonaws.com/Prod/time'
-        Time in UTC is 23/07/2020 03:54:28
+
+Time in UTC is 23/07/2020 03:54:28
 ```
 
 * Print all valid timezones:
@@ -95,5 +96,6 @@ The `REPOSITORY_URL` is available in the stack outputs or can be retrieved using
 
 ```
 ➜  ~ curl --location --request GET '8lndacgq3j.execute-api.us-east-1.amazonaws.com/Prod/time?timezone=Asia/Kolkata'
-        Current Time in Asia/Kolkata is 23/07/2020 09:28:49
+
+Current Time in Asia/Kolkata is 23/07/2020 09:28:49
 ```

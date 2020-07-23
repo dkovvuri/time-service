@@ -11,10 +11,7 @@ def handler(event,context):
                 try: 
                     timezone = event['queryStringParameters']['timezone']
                     time = datetime.datetime.now(pytz.timezone(timezone)).strftime("%d/%m/%Y %H:%M:%S")
-                    message = {
-                        'time': time,
-                        'pretty_message': "Current Time in {} is {}".format(timezone,time)
-                    }
+                    message = "Current Time in {} is {}".format(timezone,time)
                     print(message)
                 except TypeError:
                     statusCode = 400
@@ -24,10 +21,7 @@ def handler(event,context):
                 message="Unidentified Path Parameters..."
         else:
             time = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            message = {
-                        'time': time,
-                        'pretty_message': "Time in UTC is {}".format(time)
-                }
+            message = "Time in UTC is {}".format(time)
             print(message)
     elif path == "/timezones":
         message = json.dumps(pytz.common_timezones,indent=4)
