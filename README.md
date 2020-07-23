@@ -13,3 +13,23 @@ This project includes the following components:
 1. **Lambda** - The serverless compute platform for deploying the application in a `python3.7` runtime.
 
 1. **CodeDeploy** - The continous-deployment service that shows a blue-green deployment for Lambda.
+
+## Requirements
+
+1. Git 
+1. AWS CLI
+
+## Steps to Deploy the Solution
+
+1. **Deploy the Infrastructure Pipeline:**
+
+Using AWS-CLI:
+
+```bash
+aws cloudformation deploy --template-file ./infrastructure.yml \
+                          --stack-name DevOps-Artifact \
+                          --parameter-overrides Email=sdeepakreddy@live.com \
+                          --capabilities CAPABILITY_IAM
+```
+
+1. 
