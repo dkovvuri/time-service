@@ -21,24 +21,34 @@ This project includes the following components:
 
 ## Steps to Deploy the Solution
 
-1. **Deploy the Infrastructure Pipeline:**
+1. Deploy the Infrastructure Pipeline:
 
 Using AWS-CLI:
 
 ```bash
 aws cloudformation deploy --template-file ./infrastructure.yml \
                           --stack-name DevOps-Artifact \
-                          --parameter-overrides Email=sdeepakreddy@live.com \
+                          --parameter-overrides Email=<EMAIL> \
                           --capabilities CAPABILITY_IAM
 ```
+Replace `EMAIL` in the above command with the email ID where you'd like to recieve approval notifications.
 
-1. Commit code from the folder application into the CodeCommit Repository created in the stack-above:
+1. The pipeline created has a manual approval stage. A SNS topic and an email subscription would be created in the step above. Please check your email and confirm the subscription.
+
+1. Commit code from the `application` folder into the CodeCommit repository created in the stack above:
 
 ```bash
-    git clone https://git-codecommit.us-east-1.amazonaws.com/v1/repos/Time-Service
+    git clone <REPOSITORY_URL>
     cp -R application/* Time-Service/
     cd Time-Service/ 
     git add .
     git commit -m "Initial Commit"
     git push
 ```
+The `REPOSITORY_URL` is available in the stack outputs.
+
+1. After the above step, you're application should now start deploying through CodePipeline. You will need to approve the deployment for the application to be successfully deployed.
+
+1. After the pipeline execution completes, we are all set to test the `time-series` API:
+
+
