@@ -68,4 +68,4 @@ Outputs:
   TimezonesAPI:
     Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/timezones
   TimeAPITZ:
-    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time?timezone="US/Eastern"
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time?timezone=<TimeZone>
