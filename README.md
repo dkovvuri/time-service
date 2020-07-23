@@ -36,7 +36,7 @@ aws cloudformation deploy --template-file ./infrastructure.yml \
 
 ```bash
     git clone https://git-codecommit.us-east-1.amazonaws.com/v1/repos/Time-Service
-    cp -R application/ Time-Service/
+    cp -R application/* Time-Service/
     cd Time-Service/ 
     git add .
     git commit -m "Initial Commit"

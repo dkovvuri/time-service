@@ -223,8 +223,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS:
-                - !Ref "AWS::AccountId"
+              Service: cloudformation.amazonaws.com
             Action:
               - sts:AssumeRole
       Path: /
@@ -295,7 +294,7 @@ Resources:
               Configuration:
                 EnvironmentVariables: 
                   Fn::Sub: >-
-                    [{"name":"DEPLOYMENT_BUCKET","value":"${ArtifactBucket}","type":"PLAINTEXT"}]
+                    [{"name":"DEPLOYMENT_BUCKET","value":"${ArtifactBucket}","type":"PLAINTEXT"},{"name":"KMS_KEY_ID","value":"${CustomKMSKey}","type":"PLAINTEXT"}]
                 ProjectName: !Ref CodeBuildProject
               OutputArtifacts:
                 - Name: BuildArtifact
