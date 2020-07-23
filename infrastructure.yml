@@ -398,3 +398,7 @@ Resources:
             Fn::GetAtt:
               - CWEventRole
               - Arn
+
+Outputs:
+  CodeCommitRepoURI:
+    Value: !GetAtt CodeCommitRepository.CloneUrlHttp

@@ -61,3 +61,11 @@ Resources:
       Period: 60
       Statistic: Sum
       Threshold: 0
+
+Outputs:
+  TimeAPI:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time
+  TimezonesAPI:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/timezones
+  TimeAPITZ:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time?timezone="US/Eastern"
