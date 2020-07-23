@@ -8,10 +8,15 @@ Resources:
       Runtime: python3.7
       CodeUri: ./index.py
       Events:
-        ApiEvent:
+        RequestTime:
           Type: Api
           Properties:
             Path: /time
+            Method: get
+        RequestTimeZones:
+          Type: Api
+          Properties:
+            Path: /timezones
             Method: get
       AutoPublishAlias: prod
       DeploymentPreference:
@@ -30,7 +35,7 @@ Resources:
         - Name: Resource
           Value: !Sub "${TimeService}:prod"
         - Name: FunctionName
-          Value: !Ref MyLambdaFunction
+          Value: !Ref TimeService
       EvaluationPeriods: 2
       MetricName: Errors
       Namespace: AWS/Lambda
