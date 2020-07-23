@@ -1,0 +1,16 @@
+Transform: AWS::Serverless-2016-10-31
+    
+Resources:
+  TimeService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.7
+      CodeUri: ./index.py
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /time
+            Method: get
+      Tracing: Active
