@@ -15,11 +15,13 @@ This project includes the following components:
 1. **CodeDeploy** - The continous-deployment service that shows a blue-green deployment for Lambda.
 
 ## Requirements
+---
 
 1. Git 
 1. AWS CLI
 
 ## Steps to Deploy the Solution
+---
 
 1. Deploy the Infrastructure Pipeline:
 
@@ -45,10 +47,54 @@ Replace `EMAIL` in the above command with the email ID where you'd like to recie
     git commit -m "Initial Commit"
     git push
 ```
-The `REPOSITORY_URL` is available in the stack outputs.
+The `REPOSITORY_URL` is available in the stack outputs or can be retrieved using the following command:
+
+
+> ```aws cloudformation describe-stacks --stack-name DevOps-Artifact --query 'Stacks[0].Outputs[0].OutputValue' --output text```
+
 
 1. After the above step, you're application should now start deploying through CodePipeline. You will need to approve the deployment for the application to be successfully deployed.
 
 1. After the pipeline execution completes, we are all set to test the `time-series` API:
 
+> **Note:** *The execution URL for the API is available in the stack-outputs for the stack CodePipeline deploys and can be retrieved using the following command:*
 
+> ```aws cloudformation describe-stacks --stack-name Time-Service --query 'Stacks[0].Outputs' --output table```
+
+
+
+* Print time in UTC:
+
+```
+➜  ~ curl --location --request GET '8lndacgq3j.execute-api.us-east-1.amazonaws.com/Prod/time'
+        Time in UTC is 23/07/2020 03:54:28
+```
+
+* Print all valid timezones:
+
+```
+➜  ~ curl --location --request GET '8lndacgq3j.execute-api.us-east-1.amazonaws.com/Prod/timezones'
+
+[
+    "Africa/Abidjan",
+    "Africa/Accra",
+    "Africa/Addis_Ababa",
+    "Africa/Bangui",
+    "Africa/Banjul",
+        ...
+    "US/Alaska",
+    "US/Arizona",
+    "US/Central",
+    "US/Eastern",
+    "US/Hawaii",
+    "US/Mountain",
+    "US/Pacific",
+    "UTC"
+]
+```
+* Print time for a specific time-zone:
+
+```
+➜  ~ curl --location --request GET '8lndacgq3j.execute-api.us-east-1.amazonaws.com/Prod/time?timezone=Asia/Kolkata'
+        Current Time in Asia/Kolkata is 23/07/2020 09:28:49
+```
