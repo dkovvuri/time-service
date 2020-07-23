@@ -6,7 +6,7 @@ Resources:
     Properties:
       Handler: index.handler
       Runtime: python3.7
-      CodeUri: ./index.py
+      CodeUri: ./src
       Events:
         RequestTime:
           Type: Api
