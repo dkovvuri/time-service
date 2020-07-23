@@ -15,13 +15,12 @@ This project includes the following components:
 1. **CodeDeploy** - The continous-deployment service that shows a blue-green deployment for Lambda.
 
 ## Requirements
----
+
 
 1. Git 
 1. AWS CLI
 
 ## Steps to Deploy the Solution
----
 
 1. Deploy the Infrastructure Pipeline:
 
