@@ -1,0 +1,12 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - cd src
+      - pip install -r requirements.txt -t .
+      - cd ..
+      -  aws cloudformation package --template-file ./template.yml --kms-key-id $KMS_KEY_ID --s3-prefix "time-service" --s3-bucket $DEPLOYMENT_BUCKET --output-template-file application.yml
+artifacts:
+  files:
+  - application.yml
