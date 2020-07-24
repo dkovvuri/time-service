@@ -1,0 +1,404 @@
+Parameters:
+  Email:
+    Type: String
+    Description: Email Address to Recieve Approval Notifications
+Resources:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref Email
+          Protocol: "email"
+      TopicName: !Sub ${AWS::StackName}-Topic
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: Time-Service
+      RepositoryDescription: A serverless time-service that is deployed using a blue-green strategy
+  # Artifact Bucket that CodePipeline uses to store artifacts
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub pipeline-artifacts-${AWS::Region}-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+  # An Artifact Bucket Policy that allows access to the cross-account role that code-pipeline assumes.
+  ArtifactBucketPolicy: 
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref ArtifactBucket
+      PolicyDocument: 
+        Statement:
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: "*"
+            Action: s3:PutObject
+            Resource: !Sub "${ArtifactBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: aws:kms
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource: !Sub "${ArtifactBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  # A custom KMS Key to encrypt artifacts produced by CodePipeline and CodeBuild. A custom KMS Key is required since the artifacts need to be accessed from a different account.
+  CustomKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+       Description: Custom KMS key to allow cross account S3 permissions 
+       Enabled: "True"
+       KeyUsage: ENCRYPT_DECRYPT
+       KeyPolicy: 
+            Version: '2012-10-17'
+            Id: key-consolepolicy-3
+            Statement:
+            - Sid: Enable IAM User Permissions
+              Effect: Allow
+              Principal:
+                AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+              Action: kms:*
+              Resource: "*"
+            - Sid: Allow use of the key
+              Effect: Allow
+              Principal:
+                AWS:
+                  - Fn::GetAtt:
+                    - CodePipelineRole
+                    - Arn
+                  - Fn::GetAtt:
+                    - CodeBuildRole
+                    - Arn
+              Action:
+                - kms:Encrypt
+                - kms:Decrypt
+                - kms:ReEncrypt*
+                - kms:GenerateDataKey*
+                - kms:DescribeKey
+              Resource: "*"
+  #Service Role Used by CodeBuild and CodePipeline
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Description: Role for CodeBuild to assume and make calls S3, ECR, KMS etc.,
+      Policies: 
+        - PolicyName: CodeBuildBasePolicy
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            - Effect: Allow
+              Resource:
+                - !Sub "${ArtifactBucket.Arn}/*"
+                - !Sub "${ArtifactBucket.Arn}"
+              Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:GetBucketAcl
+              - s3:GetBucketLocation
+            - Effect: Allow
+              Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              Resource:
+              - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*
+            - Sid: PermissionsToAccessCustomKMKKey
+              Effect: Allow
+              Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+              Resource: "*"
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Description: Role for CodeBuild to assume and make calls S3, ECR, KMS etc.,
+      Policies: 
+        - PolicyName: "CodePipeline-Permissions"
+          PolicyDocument:
+            Statement:
+            - Action:
+              - iam:PassRole
+              Resource: "*"
+              Effect: Allow
+              Condition:
+                StringEqualsIfExists:
+                  iam:PassedToService:
+                  - cloudformation.amazonaws.com
+                  - elasticbeanstalk.amazonaws.com
+                  - ec2.amazonaws.com
+                  - ecs-tasks.amazonaws.com
+            - Action:
+              - codecommit:CancelUploadArchive
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:GetUploadArchiveStatus
+              - codecommit:UploadArchive
+              Resource: "*"
+              Effect: Allow
+            - Action:
+              - codedeploy:CreateDeployment
+              - codedeploy:GetApplication
+              - codedeploy:GetApplicationRevision
+              - codedeploy:GetDeployment
+              - codedeploy:GetDeploymentConfig
+              - codedeploy:RegisterApplicationRevision
+              Resource: "*"
+              Effect: Allow
+            - Action:
+              - elasticbeanstalk:*
+              - ec2:*
+              - elasticloadbalancing:*
+              - autoscaling:*
+              - cloudwatch:*
+              - s3:*
+              - sns:*
+              - cloudformation:*
+              - rds:*
+              - sqs:*
+              - ecs:*
+              Resource: "*"
+              Effect: Allow
+            - Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+              Resource: "*"
+              Effect: Allow
+            - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              Resource: "*"
+              Effect: Allow
+            - Effect: Allow
+              Action:
+                - kms:Encrypt
+                - kms:Decrypt
+                - kms:ReEncrypt*
+                - kms:GenerateDataKey*
+                - kms:DescribeKey
+              Resource: "*"
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
+  # Codebuild project that builds the lambda source code
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-BuildProject
+      Description: CodeBuild Project
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+        Path: .
+      EncryptionKey:
+        Fn::GetAtt:
+          - CustomKMSKey
+          - Arn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: 'aws/codebuild/standard:3.0'
+        PrivilegedMode: true
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${AWS::StackName}-Pipeline
+      RoleArn:
+        Fn::GetAtt:
+          - CodePipelineRole
+          - Arn
+      ArtifactStore:
+        Type: S3
+        Location:
+          Ref: ArtifactBucket
+        EncryptionKey:
+          Id: !Ref CustomKMSKey
+          Type: KMS
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                BranchName: master
+                PollForSourceChanges: 'false'
+                RepositoryName: !GetAtt CodeCommitRepository.Name
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Region: !Ref "AWS::Region"
+        - Name: Build
+          Actions:
+            - Name: BuildTemplateArtifacts
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              RunOrder: 1
+              Configuration:
+                EnvironmentVariables: 
+                  Fn::Sub: >-
+                    [{"name":"DEPLOYMENT_BUCKET","value":"${ArtifactBucket}","type":"PLAINTEXT"},{"name":"KMS_KEY_ID","value":"${CustomKMSKey}","type":"PLAINTEXT"}]
+                ProjectName: !Ref CodeBuildProject
+              OutputArtifacts:
+                - Name: BuildArtifact
+              InputArtifacts:
+                - Name: SourceArtifact
+              Region: !Ref "AWS::Region"
+        - Actions:
+          - ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: '1'
+            Configuration:
+              ActionMode: CHANGE_SET_REPLACE
+              Capabilities: CAPABILITY_IAM
+              ChangeSetName: Time-Service-Deployment
+              RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+              StackName: Time-Service
+              TemplatePath: BuildArtifact::application.yml
+            InputArtifacts:
+            - Name: BuildArtifact
+            Name: CreateChangeSet
+            Region: !Sub ${AWS::Region}
+            RunOrder: 1
+          - ActionTypeId:
+              Category: Approval
+              Owner: AWS
+              Provider: Manual
+              Version: '1'
+            Configuration:
+              CustomData: Please review the change-set created and approve if deployment - ready
+              NotificationArn: !Ref SNSTopic
+            Name: DeploymentApproval
+            Region: !Sub ${AWS::Region}
+            RunOrder: 2
+          - ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: '1'
+            Configuration:
+              ActionMode: CHANGE_SET_EXECUTE
+              ChangeSetName: Time-Service-Deployment
+              StackName: Time-Service
+            Name: DeployChanges
+            Region: !Sub ${AWS::Region}
+            RunOrder: 3
+          Name: Deploy
+  CWEventRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: events.amazonaws.com
+          Action: sts:AssumeRole
+      Description: Role for CloudWatch to assume and make StartPieplineExecution call
+      Policies: 
+        - PolicyName: CWEventRuleForCPPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - codepipeline:StartPipelineExecution
+              Resource:
+              - !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+  # A CloudWatch event to ensure the pipeline is triggered on push to CodeCommit.
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: Event Rule to forward Code Changes to CodePipeline 
+      EventBusName: default
+      EventPattern: 
+        source:
+        - aws.codecommit
+        detail-type:
+        - CodeCommit Repository State Change
+        resources:
+        - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${CodeCommitRepository.Name}"
+        detail:
+          event:
+          - referenceCreated
+          - referenceUpdated
+          referenceType:
+          - branch
+          referenceName:
+          - master
+      Name: CodePipeline-CWRule
+      RoleArn: 
+        Fn::GetAtt:
+          - CWEventRole
+          - Arn
+      State: ENABLED
+      Targets: 
+        - Arn: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+          Id: !Ref Pipeline
+          RoleArn: 
+            Fn::GetAtt:
+              - CWEventRole
+              - Arn
+
+Outputs:
+  CodeCommitRepoURI:
+    Value: !GetAtt CodeCommitRepository.CloneUrlHttp

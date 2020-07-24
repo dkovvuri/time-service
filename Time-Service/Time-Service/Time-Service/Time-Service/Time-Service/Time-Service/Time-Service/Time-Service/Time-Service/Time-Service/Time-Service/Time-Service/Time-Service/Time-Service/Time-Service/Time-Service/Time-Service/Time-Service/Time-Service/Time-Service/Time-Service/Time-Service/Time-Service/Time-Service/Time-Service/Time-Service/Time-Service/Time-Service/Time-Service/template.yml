@@ -1,0 +1,71 @@
+Transform: AWS::Serverless-2016-10-31
+    
+Resources:
+  TimeService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.7
+      CodeUri: ./src
+      Events:
+        RequestTime:
+          Type: Api
+          Properties:
+            Path: /time
+            Method: get
+        RequestTimeZones:
+          Type: Api
+          Properties:
+            Path: /timezones
+            Method: get
+      AutoPublishAlias: prod
+      DeploymentPreference:
+        Type: Linear10PercentEvery1Minute
+        Alarms:
+          - !Ref AliasErrorMetricGreaterThanZeroAlarm
+          - !Ref LatestVersionErrorMetricGreaterThanZeroAlarm
+      Tracing: Active
+
+  AliasErrorMetricGreaterThanZeroAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: Lambda Function Error > 0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Resource
+          Value: !Sub "${TimeService}:prod"
+        - Name: FunctionName
+          Value: !Ref TimeService
+      EvaluationPeriods: 2
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 0
+
+  LatestVersionErrorMetricGreaterThanZeroAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: Lambda Function Error > 0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Resource
+          Value: !Sub "${TimeService}:prod"
+        - Name: FunctionName
+          Value: !Ref TimeService
+        - Name: ExecutedVersion
+          Value: !GetAtt TimeService.Version.Version
+      EvaluationPeriods: 2
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 0
+
+Outputs:
+  TimeAPI:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time
+  TimezonesAPI:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/timezones
+  TimeAPITZ:
+    Value: !Sub https://${ServerlessRestApi}.execute.${AWS::Region}.amazonaws.com/Prod/time?timezone=<TimeZone>
